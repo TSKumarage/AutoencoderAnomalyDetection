@@ -1,41 +1,29 @@
 import core.impl.H2OServer;
 import hex.deeplearning.DeepLearning;
 import hex.deeplearning.DeepLearningModel;
+import hex.deeplearning.DeepLearningParameters;
 import hex.splitframe.ShuffleSplitFrame;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
 import water.Key;
 import water.fvec.Frame;
 import water.fvec.NFSFileVec;
 import water.fvec.Vec;
 import water.parser.ParseDataset;
 import water.util.Log;
-import hex.deeplearning.DeepLearningParameters;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 
 /**
- * Created by wso2123 on 9/18/16.
+ * Created by wso2123 on 10/3/16.
  */
-public class DeepLearningAutoencoderTest {
-     /*
-    Visualize outliers with the following R code (from smalldata/anomaly dir):
+public class DeepLearningAutoencoderTestAlpha {
 
-    train <- scan("ecg_discord_train.csv", sep=",")
-    test  <- scan("ecg_discord_test.csv",  sep=",")
-    plot.ts(train)
-    plot.ts(test)
-  */
-
-    static final String PATH = "/home/wso2123/My Work/Datasets/KDD Cup/kddcup.data_10_percent_corrected";
+    static final String PATH = "/home/wso2123/My Work/Datasets/Breast cancer wisconsin/data.csv";
     static final String PATH2 = "/home/wso2123/My Work/Datasets/KDD Cup/kddcup.data.corrected";
 
     public static void main(String[] args) {
@@ -51,7 +39,7 @@ public class DeepLearningAutoencoderTest {
 //            NFSFileVec  nfs2 = NFSFileVec.make(find_test_file(PATH2));
 //            test = ParseDataset.parse(Key.make("test.hex"), nfs2._key);
             NFSFileVec nfs = NFSFileVec.make(find_test_file(PATH));
-            full_data=ParseDataset.parse(Key.make("full.hex"),nfs._key);
+            full_data= ParseDataset.parse(Key.make("full.hex"),nfs._key);
             Key<Frame>[] keys = new Key []{Key.make("train.hex"),Key.make("test.hex")};
 
             Frame[] sub_frames = ShuffleSplitFrame.shuffleSplitFrame(full_data,keys,new double[]{0.7,0.3},seed);
@@ -66,7 +54,7 @@ public class DeepLearningAutoencoderTest {
             float lbl;
 
             for (long i = 0; i < size; i++) {
-                lbl = (float) full_data.vec(test.numCols() - 1).at(i);
+                lbl = (float) full_data.vec("diagnosis").at(i);
 
                 if (map_lbl.containsKey(lbl)) {
                     map_lbl.put(lbl, map_lbl.get(lbl) + 1);
@@ -89,7 +77,7 @@ public class DeepLearningAutoencoderTest {
             p._hidden = new int[]{25, 12, 25};
             p._l1 = 1e-4;
             p._activation = DeepLearningParameters.Activation.TanhWithDropout;
-            p._epochs = 10;
+            p._epochs = 25;
             p._force_load_balance = true;
             DeepLearning dl = new DeepLearning(p);
             DeepLearningModel mymodel = dl.trainModel().get();
@@ -105,7 +93,7 @@ public class DeepLearningAutoencoderTest {
                 // Training data
 
                 // Reconstruct data using the same helper functions and verify that self-reported MSE agrees
-                double quantile = 0.99;
+                double quantile = 0.95;
 
                 l2_frame_train = mymodel.scoreAutoEncoder(train, Key.make(), false);
                 final Vec l2_train = l2_frame_train.anyVec();
@@ -133,7 +121,7 @@ public class DeepLearningAutoencoderTest {
                     map_lbl=new HashMap<Float, Long>();
 
                     for (long i = 0; i < size; i++) {
-                        lbl= (float)test.vec(test.numCols() - 1).at(i);
+                        lbl= (float)test.vec("diagnosis").at(i);
 
                         if (map_lbl.containsKey(lbl))
                         {
@@ -147,7 +135,7 @@ public class DeepLearningAutoencoderTest {
                         if (l2_test.at(i) > thresh_test) {
                             out_count++;
 
-                            if ((float)test.vec(test.numCols() - 1).at(i) != 11.0) {
+                            if ((float)test.vec("diagnosis").at(i) != 0.0) {
                                 tP++;
                             } else {
                                 fP++;
@@ -155,7 +143,7 @@ public class DeepLearningAutoencoderTest {
 
                         } else {
                             no_count++;
-                            if ((float)test.vec(test.numCols() - 1).at(i) != 11.0) {
+                            if ((float)test.vec("diagnosis").at(i) != 0.0) {
                                 fN++;
                             } else {
                                 tN++;
