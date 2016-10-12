@@ -8,7 +8,7 @@ import core.exceptions.MLModelBuilderException;
 import core.interfaces.MLModelBuilder;
 import core.internals.MLModelConfigurationContext;
 import data.reader.LabeledPoint;
-import data.reader.SampleFileReader;
+import data.reader.SampleFileParser;
 import data.schema.MLConstants;
 import data.schema.MLModel;
 import data.schema.Workflow;
@@ -18,7 +18,6 @@ import org.apache.commons.logging.LogFactory;
 
 import java.util.List;
 import java.util.Map;
-import java.util.SortedMap;
 
 /**
  * Build deep learning models
@@ -45,7 +44,7 @@ public class DeeplearningModelBuilder extends MLModelBuilder {
 
             Workflow workflow = context.getFacts();
             long modelId = context.getModelId();
-            SampleFileReader dataReader=context.getDataScanner();
+            SampleFileParser dataReader=context.getDataScanner();
             List<LabeledPoint> data=dataReader.getData();
             int sep=0;
             sep=(int)(data.size()*0.7);

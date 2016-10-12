@@ -1,3 +1,5 @@
+package data;
+
 import core.impl.H2OServer;
 import hex.deeplearning.DeepLearning;
 import hex.deeplearning.DeepLearningModel;
@@ -16,34 +18,44 @@ import java.util.Iterator;
 import java.util.Map;
 
 /**
- * Created by wso2123 on 10/3/16.
+ * Created by wso2123 on 10/10/16.
  */
-public class DeepLearningAutoencoderTestAlpha {
+public class DeepLearningAutoencoderTestBeta {
 
     static final String PATH = "/home/wso2123/My Work/Datasets/Breast cancer wisconsin/data.csv";
     static final String PATH2 = "/home/wso2123/My Work/Datasets/KDD Cup/kddcup.data.corrected";
-    static final String PATH3 = "/home/wso2123/My Work/Datasets/Breast cancer wisconsin/validate.csv";
-    static final String PATH4 = "/home/wso2123/My Work/Datasets/Breast cancer wisconsin/train.csv";
-    static final String PATH5 = "/home/wso2123/My Work/Datasets/Breast cancer wisconsin/test.csv";
 
     public static void main(String[] args) {
         H2OServer.startH2O("54321");
         long seed = 0xDECAF;
         boolean isSaved=false;
         int data_size=0;
-        Frame full_data=null,train = null, test = null, normal_data=null, validate=null;
+        Frame full_data=null,train = null, test = null,normal_data=null,validate_data=null;
         long tP=0,fP=0,tN=0,fN=0;
         Map<Float,Long> map_lbl=new HashMap<Float, Long>();
         try {
 
             if (!isSaved) {
-                NFSFileVec nfs = NFSFileVec.make(find_test_file(PATH4));
-                train = ParseDataset.parse(Key.make("train.hex"), nfs._key);
-                nfs= NFSFileVec.make(find_test_file(PATH3));
-                validate = ParseDataset.parse(Key.make("validate.hex"), nfs._key);
-                nfs= NFSFileVec.make(find_test_file(PATH5));
-                test = ParseDataset.parse(Key.make("test.hex"), nfs._key);
+                NFSFileVec nfs = NFSFileVec.make(find_test_file(PATH));
+                full_data = ParseDataset.parse(Key.make("full.hex"), nfs._key);
+                NFSFileVec.make(find_test_file(PATH));
+                normal_data = ParseDataset.parse(Key.make("normal.hex"), nfs._key);
+                Key<Frame>[] keys = new Key[]{Key.make("train.hex"), Key.make("test.hex")};
 
+
+                Frame[] sub_frames = ShuffleSplitFrame.shuffleSplitFrame(full_data, keys, new double[]{0.7, 0.3}, seed);
+                test = sub_frames[1];
+                keys = new Key[]{Key.make("train.hex"), Key.make("validate.hex")};
+                sub_frames = ShuffleSplitFrame.shuffleSplitFrame(normal_data, keys, new double[]{0.8, 0.2}, seed);
+                train = sub_frames[0];
+                validate_data = sub_frames[1];
+                ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream("TrainSet.ser"));
+                out.writeObject(test);
+                out.close();
+
+                out = new ObjectOutputStream(new FileOutputStream("TestSet.ser"));
+                out.writeObject(test);
+                out.close();
             }
             else {
                 InputStream file = new FileInputStream("TrainSet.ser");
@@ -61,11 +73,11 @@ public class DeepLearningAutoencoderTestAlpha {
             float sparsity_beta = 0.1f;
             StringBuilder sb = new StringBuilder();
 
-            long size=train.numRows();
+            long size=full_data.numRows();
             float lbl;
 
             for (long i = 0; i < size; i++) {
-                lbl = (float) train.vec("diagnosis").at(i);
+                lbl = (float) full_data.vec("diagnosis").at(i);
 
                 if (map_lbl.containsKey(lbl)) {
                     map_lbl.put(lbl, map_lbl.get(lbl) + 1);
@@ -82,7 +94,7 @@ public class DeepLearningAutoencoderTestAlpha {
 
             DeepLearningParameters p = new DeepLearningParameters();
             p._train = train._key;
-            p._valid = validate._key;
+            p._valid = validate_data._key;
             p._autoencoder = true;
             p._seed = seed;
             p._hidden = new int[]{9,9,9};
@@ -108,15 +120,14 @@ public class DeepLearningAutoencoderTestAlpha {
 
                 l2_frame_train = mymodel.scoreAutoEncoder(train, Key.make(), false);
                 final Vec l2_train = l2_frame_train.anyVec();
-                size=l2_train.length();
 
-                double thresh_test = l2_train.max();
                 l2_frame_train.remove();
+
 
                 l2_frame_test=mymodel.scoreAutoEncoder(test, Key.make(), false);
 
                 Vec l2_test = l2_frame_test.anyVec();
-//                double thresh_test  = mymodel.calcOutlierThreshold(l2_test, quantile);
+                double thresh_test  = mymodel.calcOutlierThreshold(l2_test, quantile);
                 //thresh_test=0.0634;
                 double mult = 5;
                 //double thresh_test = mult * thresh_train;
@@ -125,14 +136,11 @@ public class DeepLearningAutoencoderTestAlpha {
 
                 int out_count=0,no_count=0;
                 // print stats and potential outliers
-
                 sb.append("Quantile used: ").append(quantile*100).append("\n");
                 sb.append("The following test points are reconstructed with an error greater than: ").append(thresh_test).append("\n");
 
                 try {
                     sb.append("Size: ").append(l2_test.length()).append("\n");
-                    sb.append("Size: ").append(test.numRows()).append("\n");
-                    sb.append("Size: ").append(train.numRows()).append("\n");
                     size=l2_test.length();
                     map_lbl=new HashMap<Float, Long>();
 
@@ -226,11 +234,7 @@ public class DeepLearningAutoencoderTestAlpha {
             e.printStackTrace();
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        finally
-        {
+        } finally {
             if (train != null) train.delete();
             if (test != null) test.delete();
             H2OServer.stopH2O();

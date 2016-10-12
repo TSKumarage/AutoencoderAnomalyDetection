@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import core.domain.MLModelData;
-import data.reader.SampleFileReader;
+import data.reader.SampleFileParser;
 import data.schema.Workflow;
 
 /**
@@ -25,7 +25,7 @@ public class MLModelConfigurationContext {
     private String columnSeparator;
     private String[] dataToBePredicted;
     private Map<String,String> summaryStatsOfFeatures;
-    private SampleFileReader dataScanner;
+    private SampleFileParser dataScanner;
     /**
      * Encodings list.
      * index - index of the feature. (last index is response variable)
@@ -116,11 +116,11 @@ public class MLModelConfigurationContext {
         this.responseIndex = responseIndex;
     }
 
-    public SampleFileReader getDataScanner() {
+    public SampleFileParser getDataScanner() {
         return dataScanner;
     }
 
-    public void setDataScanner(SampleFileReader dataScanner) {
+    public void setDataScanner(SampleFileParser dataScanner) {
         this.dataScanner = dataScanner;
     }
 }

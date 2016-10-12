@@ -37,12 +37,13 @@ public class DeepLearningAutoencoderTest {
 
     static final String PATH = "/home/wso2123/My Work/Datasets/KDD Cup/kddcup.data_10_percent_corrected";
     static final String PATH2 = "/home/wso2123/My Work/Datasets/KDD Cup/kddcup.data.corrected";
+    static final String PATH3 = "/home/wso2123/My Work/Datasets/KDD Cup/kddcup.data_10_percent_corrected_normal.csv";
 
     public static void main(String[] args) {
         H2OServer.startH2O("54321");
         long seed = 0xDECAF;
         int data_size=0;
-        Frame full_data=null,train = null, test = null;
+        Frame full_data=null,train = null, test = null, normal_data=null, validate=null;
         long tP=0,fP=0,tN=0,fN=0;
         Map<Float,Long> map_lbl=new HashMap<Float, Long>();
         try {
@@ -52,13 +53,22 @@ public class DeepLearningAutoencoderTest {
 //            test = ParseDataset.parse(Key.make("test.hex"), nfs2._key);
             NFSFileVec nfs = NFSFileVec.make(find_test_file(PATH));
             full_data=ParseDataset.parse(Key.make("full.hex"),nfs._key);
-            Key<Frame>[] keys = new Key []{Key.make("train.hex"),Key.make("test.hex")};
+
+            Key<Frame>[] keys = new Key []{Key.make("test1.hex"),Key.make("test.hex")};
 
             Frame[] sub_frames = ShuffleSplitFrame.shuffleSplitFrame(full_data,keys,new double[]{0.7,0.3},seed);
 //            data_size=full_data.vecs().length;
 //            int index= ()data_size*0.3;
-            train=sub_frames[0];;
             test=sub_frames[1];
+
+            nfs = NFSFileVec.make(find_test_file(PATH3));
+            normal_data=ParseDataset.parse(Key.make("normal.hex"),nfs._key);
+            keys = new Key []{Key.make("train.hex"),Key.make("validate.hex")};
+
+            sub_frames = ShuffleSplitFrame.shuffleSplitFrame(full_data,keys,new double[]{0.8,0.2},seed);
+            train = sub_frames[0];
+            validate = sub_frames[1];
+
             float sparsity_beta = 0.1f;
             StringBuilder sb = new StringBuilder();
 
@@ -83,7 +93,7 @@ public class DeepLearningAutoencoderTest {
 
             DeepLearningParameters p = new DeepLearningParameters();
             p._train = train._key;
-            p._valid = test._key;
+            p._valid = validate._key;
             p._autoencoder = true;
             p._seed = seed;
             p._hidden = new int[]{25, 12, 25};
